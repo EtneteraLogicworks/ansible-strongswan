@@ -1,0 +1,6 @@
+charon {
+    retransmit_limit = {{ strongswan.charon.retransmit_limit }}
+    retransmit_timeout = {{ strongswan.charon.retransmit_timeout }}
+    retransmit_base = {{ strongswan.charon.retransmit_base }}
+    cache_crls = {{ 'yes' if strongswan.charon.cache_crls | default(false) else 'no' }}
+}

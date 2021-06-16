@@ -1,0 +1,63 @@
+#!/bin/bash
+
+REFRESH='FALSE'
+EXITCODE=0
+readonly STRONGSWAN_SERVICE='strongswan-swanctl.service'
+
+function print_verbose() {
+    if [ "${VERBOSE}" = 'TRUE' ]; then
+        printf -- '%s\n' "${@}"
+    fi
+}
+
+function print_error() {
+    printf -- '%s\n' "${@}" >&2
+}
+
+function refresh() {
+    print_verbose "Refreshing Strongswan service"
+    systemctl reload "${STRONGSWAN_SERVICE}"
+}
+
+function import_item() {
+    local name itempath itemtype sourcesum targetsum
+    name="${1}"
+    itempath="${2}"
+    itemtype="${3}"
+
+    if [ -s "/etc/swanctl/${itemtype}/${name}.pem"  ]; then
+        targetsum=$(shasum "/etc/swanctl/${itemtype}/${name}.pem" | cut -d ' ' -f 1)
+    fi
+
+    if [ -s "${itempath}" ]; then
+        sourcesum=$(shasum "${itempath}" | cut -d ' ' -f 1)
+        print_verbose "Source item ${itempath} digest: ${sourcesum}"
+        print_verbose "Target item ${itempath} digest: ${targetsum}"
+        if [[ "${sourcesum}" != "${targetsum}" ]]; then
+            print_verbose "Deploying item"
+            cp "${itempath}" "/etc/swanctl/${itemtype}/${name}.pem"
+            REFRESH='TRUE'
+        else
+            print_verbose "Items match. Nothing to do."
+        fi
+    else
+        print_error "Item ${itempath} not found"
+        EXITCODE=1
+    fi
+}
+
+function main() {
+
+{% for item in strongswan_sync_certificates %}
+    import_item '{{ item.name }}' '{{ item.key }}' '{{ "rsa" if item.rsa | default(false) else "ecdsa" }}'
+    import_item '{{ item.name }}' '{{ item.cert }}' 'x509'
+{% endfor %}
+
+    if [[ "${REFRESH}" == 'TRUE' ]]; then
+        refresh
+    fi
+
+    exit "${EXITCODE}"
+}
+
+main "$@"

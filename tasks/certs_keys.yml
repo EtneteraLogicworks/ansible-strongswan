@@ -1,0 +1,81 @@
+---
+# Ansible tasks
+#
+#
+
+- name: Generate raw key pairs
+  block:
+    - name: Generate private keys
+      openssl_privatekey:
+        path: '/etc/swanctl/{{ item.type }}/{{ item.name }}.key'
+        type: '{{ item.cipher | default(omit) }}'
+        size: '{{ item.size | default(omit) }}'
+        owner: 'root'
+        group: 'root'
+        mode: '0600'
+      notify: reload strongswan
+      loop: '{{ strongswan.private_keys }}'
+
+    - name: Generate public keys
+      openssl_publickey:
+        path: '/etc/swanctl/pubkey/{{ item.name }}.pub'
+        privatekey_path: '/etc/swanctl/{{ item.type }}/{{ item.name }}.key'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+      notify: reload strongswan
+      loop: '{{ strongswan.private_keys }}'
+
+  when: failover_role | default('none') != 'backup'
+  tags:
+    - strongswan-privkeys
+
+
+- name: Upload raw public keys
+  copy:
+    src: 'ipsec-keys/{{ item.name }}'
+    dest: '/etc/swanctl/pubkey/{{ item.name }}'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify: reload strongswan
+  loop: '{{ strongswan.public_keys }}'
+  tags:
+    - strongswan-pubkeys
+
+- name: Upload CA certificates
+  copy:
+    src: '{{ item.path | default("cacerts/" + item.name) }}'
+    dest: '/etc/swanctl/x509ca/{{ item.name }}'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify: reload strongswan
+  loop: '{{ strongswan.cacerts }}'
+  tags:
+    - strongswan-cacerts
+
+
+- name: Automatic certificate import
+  block:
+    - name: Certificate sync script
+      template:
+        dest: '/opt/scripts/strongswan_certsync.sh'
+        src: 'strongswan_certsync.sh.j2'
+        owner: 'root'
+        group: 'root'
+        mode: '0700'
+
+    - name: Sync certificates hourly
+      cron:
+        name: 'Strongswan certificate sync'
+        job: '/opt/scripts/strongswan_certsync.sh'
+        minute: '{{ 59 | random(seed=inventory_hostname) }}'
+        user: root
+        cron_file: 'strongswan'
+
+  when: strongswan_sync_certificates is defined
+  tags:
+    - strongswan-certsync
+
+...

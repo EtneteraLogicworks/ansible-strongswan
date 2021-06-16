@@ -1,0 +1,66 @@
+---
+# Ansible role
+#
+# Role deploys and configures Strongswan VPN server
+
+- name: Install Stronswan packages
+  apt:
+     name:
+       - 'charon-systemd'
+       - 'libstrongswan-extra-plugins'
+       - 'python-cryptography'
+       - 'python3-cryptography'
+
+- name: Kernel configuration
+  sysctl:
+    name: '{{ item.name }}'
+    value: '{{ item.value }}'
+    sysctl_file: '/etc/sysctl.d/strongswan-kernel.conf'
+  loop: '{{ strongswan.kernel }}'
+
+- name: Create script directory
+  file:
+    path: '/opt/scripts'
+    state: directory
+    recurse: yes
+
+- name: Install keepalived_strongswan.sh script
+  copy:
+    src: 'keepalived_strongswan.sh'
+    dest: '/opt/scripts'
+    mode: '0755'
+
+- name: Provide keys and certificates
+  import_tasks: 'certs_keys.yml'
+  tags:
+    - strongswan-certs
+    - strongswan-keys
+
+- name: Configure charon
+  template:
+    dest: '/etc/strongswan.d/charon.conf'
+    src: 'charon.conf.j2'
+    owner: 'root'
+    group: 'root'
+    mode: '0600'
+  notify: reload strongswan
+  tags:
+    - strongswan-config
+
+- name: Configure swanctl
+  template:
+    dest: '/etc/swanctl/conf.d/{{ item }}.conf'
+    src: '{{ item }}.conf.j2'
+    owner: 'root'
+    group: 'root'
+    mode: '0600'
+  notify: reload strongswan
+  loop:
+    - 'connections'
+    - 'pools'
+    - 'secrets'
+    - 'authorities'
+  tags:
+    - strongswan-config
+
+...

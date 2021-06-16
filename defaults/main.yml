@@ -1,0 +1,46 @@
+---
+# Ansible vars file
+#
+# Default proměnné pro roli strongswan
+
+strongswan:
+  authorities: []
+  connections: []
+  user_connections: []
+  pools: []
+  private_keys: []
+  public_keys: []
+  charon:
+    retransmit_limit: 5
+    retransmit_timeout: 4.0
+    retransmit_base: 1.3
+  default:
+    unique: 'no'
+    version: 2
+    auth: 'psk'
+    proposals:
+      - 'aes256-sha1-modp2048'
+    dpd_delay: 0
+    mobike: false
+    start_action: 'trap'
+    dpd_action: 'clear'
+    close_action: 'none'
+  kernel:
+    # Enable routing
+    - name: 'net.ipv4.ip_forward'
+      value: 1
+    # Disable ICMP redirects
+    - name: 'net.ipv4.conf.all.accept_redirects'
+      value: 0
+    - name: 'net.ipv4.conf.default.accept_redirects'
+      value: 0
+    - name: 'net.ipv6.conf.all.accept_redirects'
+      value: 0
+    - name: 'net.ipv6.conf.default.accept_redirects'
+      value: 0
+    - name: 'net.ipv4.conf.all.send_redirects'
+      value: 0
+    - name: 'net.ipv4.conf.default.send_redirects'
+      value: 0
+
+...

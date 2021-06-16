@@ -1,0 +1,11 @@
+---
+# Ansible handler
+#
+# Handlery role strongswan
+
+- name: reload strongswan
+  service:
+    name: 'strongswan-swanctl.service'
+    state: reloaded
+
+...

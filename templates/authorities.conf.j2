@@ -1,0 +1,13 @@
+authorities {
+{% for authority in strongswan.authorities %}
+    {{ authority.name }} {
+        cacert  = {{ authority.cacert | default(authority.name + ".pem") }}
+{%   if authority.crl_uris is defined %}
+        crl_uris = {{ authority.crl_uris | join(",") }}
+{%   endif %}
+{%   if authority.ocsp_uris is defined %}
+        ocsp_uris = {{ authority.ocsp_uris | join(",") }}
+{%   endif %}
+    }
+{% endfor %}
+}

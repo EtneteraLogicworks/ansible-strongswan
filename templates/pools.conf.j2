@@ -1,0 +1,11 @@
+pools {
+{% for pool in strongswan.pools %}
+    {{ pool.name }} {
+        addrs  = {{ pool.addrs | join(",") }}
+{%   for attribute in pool.attributes | default([]) %}
+        {{ attribute.name }} = {{ attribute.params | join(",") }}
+{%   endfor %}
+    }
+{% endfor %}
+}
+

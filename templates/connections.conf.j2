@@ -1,0 +1,95 @@
+connections {
+
+{# Generic connection #}
+{% for connection in strongswan.connections %}
+  {{ connection.name }} {
+    local_addrs = {{ connection.local.addrs | join(",") }}
+{%   if connection.remote.addrs is defined %}
+    remote_addrs = {{ connection.remote.addrs | join(",") }}
+{%   endif %}
+{%   if connection.pools is defined %}
+    pools = {{ connection.pools | join(",") }}
+{%   endif %}
+{%   if connection.unique is defined %}
+    unique = {{ connection.unique }}
+{%   endif %}
+{%   if connection.send_cert is defined %}
+    send_cert = {{ connection.send_cert }}
+{%   endif %}
+{%   if connection.send_certreq is defined %}
+    send_certreq = {{ connection.send_certreq }}
+{%   endif %}
+    local {
+      auth = {{ connection.local.auth | default(strongswan.default.auth) }}
+      id = {{ connection.local.id }}
+{%   if connection.local.certs is defined %}
+      certs = '{{ connection.local.certs | join(",") }}'
+{%   endif %}
+{%   if connection.secret.type | default('ike') in ['rsa', 'ecdsa', 'pubkey'] %}
+      pubkeys = '{{ connection.local.pubkeys | join(",") }}'
+{%   endif %}
+    }
+    remote {
+      auth = {{ connection.remote.auth | default(strongswan.default.auth) }}
+{%   if connection.remote.id is defined %}
+      id = {{ connection.remote.id }}
+{%   endif %}
+{%   if connection.secret.type | default('ike') in ['rsa', 'ecdsa', 'pubkey'] %}
+      pubkeys = '{{ connection.remote.pubkeys | join(",") }}'
+{%   endif %}
+    }
+    children {
+{%   for child in connection.children %}
+      {{ child.name }} {
+        local_ts  = {{ child.local_ts | join(',') }}
+{%     if child.remote_ts is defined %}
+        remote_ts = {{ child.remote_ts | join(',') }}
+{%     endif %}
+        start_action = {{ child.start_action | default(strongswan.default.start_action) }}
+        close_action = {{ child.close_action | default(strongswan.default.close_action) }}
+        dpd_action = {{ child.dpd_action | default(strongswan.default.dpd_action) }}
+        esp_proposals = {{ child.proposals | default(strongswan.default.proposals) | join(",") }}
+      }
+{%   endfor %}
+    }
+    dpd_delay = {{ connection.dpd_delay | default(strongswan.default.dpd_delay) }}
+    version = {{ connection.version | default(strongswan.default.version) }}
+    mobike = {{ 'yes' if connection.mobike | default(strongswan.default.mobike) else 'no' }}
+    proposals = {{ connection.proposals | default(strongswan.default.proposals) | join(",") }}
+  }
+{% endfor %}
+
+{# User VPN per-user connection #}
+{% for user_connection in strongswan.user_connections %}
+{%   for user in user_connection.users %}
+  {{ user.name }} {
+    local_addrs  = {{ user_connection.local.addrs | join(",") }}
+    pools = {{ user.pools | join(",") }}
+    unique = {{ user_connection.unique | default(strongswan.default.unique) }}
+    local {
+      auth = {{ user_connection.local.auth | default(strongswan.default.auth) }}
+      id = {{ user_connection.local.id }}
+    }
+    remote {
+      auth = {{ user_connection.remote.auth | default(strongswan.default.auth) }}
+      id = {{ user.id }}
+    }
+    children {
+{%     for child in user_connection.children %}
+      {{ user.name }}-{{ child.name }} {
+        local_ts  = {{ child.local_ts | join(',') }}
+        start_action = {{ child.start_action | default(strongswan.default.start_action) }}
+        close_action = {{ child.close_action | default(strongswan.default.close_action) }}
+        dpd_action = {{ child.dpd_action | default(strongswan.default.dpd_action) }}
+        esp_proposals = {{ child.proposals | default(strongswan.default.proposals) | join(",") }}
+      }
+{%     endfor %}
+    }
+    dpd_delay = {{ user_connection.dpd_delay | default(strongswan.default.dpd_delay) }}
+    version = {{ user_connection.version | default(strongswan.default.version) }}
+    mobike = {{ 'yes' if user_connection.mobike | default(strongswan.default.mobike) else 'no' }}
+    proposals = {{ user_connection.proposals | default(strongswan.default.proposals) | join(",") }}
+  }
+{%   endfor %}
+{% endfor %}
+}
